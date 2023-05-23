@@ -109,41 +109,41 @@ plt.show()
 
 
 
-# we use the El niño 3.4 index to mask the data, so we can choose only the data during the Nov-Feb period with La Niña-Neutral conditions
-# Oceanic Nino Index defined by 5 consecutive months of 3-month-running-mean of Nino3.4 SST above/below 0.5
+#we use the El niño 3.4 index to mask the data, so we can choose only the data during the Nov-Feb period with La Niña-Neutral conditions
+#Oceanic Nino Index defined by 5 consecutive months of 3-month-running-mean of Nino3.4 SST above/below 0.5
 start_year = 1950
 length = 12*(2023 - start_year) +3
 
-nino34 = np.loadtxt('climate_data/iersst_nino3.4a.txt', skiprows=44)
+nino34 = np.loadtxt('iersst_nino3.4a.txt', skiprows=44)
 nino34= nino34[nino34[:,0] >= 1950]
-#nino34= nino34[nino34[:,0] < 2023]
+nino34= nino34[nino34[:,0] < 2023]
 nino34smoothed = pp.smooth(nino34[:,1], smooth_width=3, kernel='heaviside',
            mask=None, residuals=False)
 
-plt.plot(nino34[:,1])
-plt.plot(nino34smoothed)
-plt.show()
+#plt.plot(nino34[:,1])
+#plt.plot(nino34smoothed)
+#plt.show()
 
 # Construct mask for only neutral and La Nina phases
-nino_mask = np.zeros(length)
-for t in range(length):
-    if np.sum(nino34smoothed[max(0, t-4): min(length, t+5)] > 0.5) >= 5:
-        nino_mask[t] = 1
+#nino_mask = np.zeros(length)
+#for t in range(length):
+#    if np.sum(nino34smoothed[max(0, t-4): min(length, t+5)] > 0.5) >= 5:
+#        nino_mask[t] = 1
 
 # Time-bin mask since we will use bimonthly time series. If we change this later, remember to change cycle_length = 6
 # nino_mask, _ = pp.time_bin_with_mask(nino_mask,
 #   time_bin_length=2, mask=None)
 
 # Construct mask to only select November to February
-cycle_length = 12
-mask = np.ones(df.shape, dtype='bool')
-for i in [0, 1, 10, 11]:  #
-    mask[i::cycle_length, :] = False
+#cycle_length = 12
+#mask = np.ones(df.shape, dtype='bool')
+#for i in [0, 1, 10, 11]:  #
+#    mask[i::cycle_length, :] = False
 
 # Additionally mask to pick only neutral and La Nina phases
-for t in range(mask.shape[0]):
-    if nino_mask[t] >= 0.5:
-        mask[t] = True
+#for t in range(mask.shape[0]):
+#   if nino_mask[t] >= 0.5:
+#        mask[t] = True
 
 
 
@@ -249,42 +249,6 @@ ax = tp.plot_graph(
 
 plt.show()
 
-########################### Transform data and do the same analysis ##################################
+##################################################################################
 
-from statsmodels.tsa.seasonal import seasonal_decompose
-
-# Subset only data from 1970-2020
-df = df[df['Date'] >= '1970-01']
-
-decompositionWPAC = seasonal_decompose(df['WPAC'], model='additive', period=12)
-decompositionCPAC = seasonal_decompose(df['CPAC'], model='additive', period=12)
-decompositionEPAC = seasonal_decompose(df['EPAC'], model='additive', period=12)
-
-decompositionWPAC.plot()
-plt.show()
-
-# specify new date
-date = pd.date_range(start='1970-01-01', end='2020-12-01', freq='MS')
-date = date.strftime('%Y-%m')
-# deseasonalize
-WPAC_deseason = df['WPAC'] - decompositionWPAC.seasonal
-CPAC_deseason = df['CPAC'] - decompositionCPAC.seasonal
-EPAC_deseason = df['EPAC'] - decompositionEPAC.seasonal
-
-
-# create new dataframe with deseasonalized data
-df_deseason = pd.DataFrame({'Date': date, 'WPAC': WPAC_deseason,'CPAC': CPAC_deseason, 'EPAC':EPAC_deseason})
-
-dataframe = pp.DataFrame(df_deseason.iloc[:, 1:4].values, datatime = {0:np.arange(len(df_deseason))}, var_names= var_names)
-
-# rerun code from before(tigramite data inspection)
-
-# aggregate over the year
-df['Date'] = pd.to_datetime(df['Date'])
-df['year'] = df['Date'].dt.year
-
-df_year = df.groupby('year').mean()
-df_year = df_year[df_year.index >= 1970]
-dataframe = pp.DataFrame(df_year.iloc[:, 0:3].values, datatime = {0:np.arange(len(df_year))}, var_names= var_names)
-
-# rerun code from before(tigramite data inspection)
+# Causal network 2: Spring barrier
