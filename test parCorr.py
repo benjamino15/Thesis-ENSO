@@ -67,7 +67,7 @@ sim_parCorr(100, 1.984)
 false_positives = []
 for i in range(100):
     iteration = i
-    false_positive = sim_parCorr(1000, 1.984)
+    false_positive = sim_parCorr(1000, 1.962)
     false_positives.append(false_positive)
 
 import seaborn as sns
@@ -75,31 +75,26 @@ import seaborn as sns
 false_positives2 = []
 for i in range(500):
     iteration = i
-    false_positive = sim_parCorr(1000, 1.984)
+    false_positive = sim_parCorr(1000, 1.962)
     false_positives2.append(false_positive)
 
 false_positives3 = []
 for i in range(1000):
     iteration = i
-    false_positive = sim_parCorr(1000, 1.984)
+    false_positive = sim_parCorr(1000, 1.962)
     false_positives3.append(false_positive)
 
 
 
 fig, axs = plt.subplots(1, 3, figsize = (12,10))
 
-sns.displot(false_positives, kde = True, ax = axs[0,0])
-axs[0, 0].set_title("100 samples")
-sns.displot(false_positives2, kde = True, ax = axs[0,1])
-axs[0, 1].set_title("500 samples")
-sns.displot(false_positives3, kde = True, ax = axs[0,2])
-axs[0, 2].set_title("1000 samples")
+sns.histplot(false_positives, kde = True, ax = axs[0], bins = 13)
+axs[0].set_title("100 samples")
+sns.histplot(false_positives2, kde = True, ax = axs[1], bins = 13)
+axs[1].set_title("500 samples")
+sns.histplot(false_positives3, kde = True, ax = axs[2], bins = 13)
+axs[2].set_title("1000 samples")
 
-
-
-
-
-plt.hist(false_positives, density = True)
 plt.show()
 
 

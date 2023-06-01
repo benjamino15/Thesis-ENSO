@@ -1,5 +1,4 @@
 
-
 import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
@@ -42,9 +41,9 @@ def deTrend_deSeasonalize(data, show_plot = True):
 print(pkg_resources.get_distribution("tigramite").version)
 
 # Reading the data
-cpac = pd.read_csv('CMIP6/CESM2/icmip6_tas_mon_CESM2_ssp585.0_-150--130E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=56, header=None)
-epac = pd.read_csv('CMIP6/CESM2/icmip6_tas_mon_CESM2_ssp585.0_-100--80E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=56, header=None)
-wpac = pd.read_csv('CMIP6/CESM2/icmip6_psl_mon_CESM2_ssp585.0_130-150E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=56, header=None)
+epac = pd.read_csv('walker_data_obs/iera5_t2m_-100--80E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=20, header=None)
+cpac = pd.read_csv('walker_data_obs/iera5_t2m_-150--130E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=20, header=None)
+wpac = pd.read_csv('walker_data_obs/iera5_slp_130-150E_-5-5N_n.dat', delimiter=r"\s+", skiprows=20, header=None)
 
 cpac.columns = ['Year', 'Jan', 'Feb', 'Mar', 'Apr', 'May','Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 epac.columns = cpac.columns
@@ -63,7 +62,7 @@ wpac = wpac.stack().reset_index(drop=True)
 
 
 # specify date and add to dataframe
-date = pd.date_range(start='1850-01-01', end='2100-12-01', freq='MS')
+date = pd.date_range(start='1950-01-01', end='2023-12-01', freq='MS')
 date = date.strftime('%Y-%m')
 
 df = pd.DataFrame({'Date': date, 'WPAC': wpac, 'CPAC': cpac, 'EPAC': epac})
@@ -117,7 +116,23 @@ plt.plot(nino34[:,1])
 plt.plot(nino34smoothed)
 plt.show()
 
+nino34 = nino34[:,1]
+# to see averages
+test = []
+for s in range(11, int(len(df)/12)*12, 12):
+    test.append(np.mean(nino34[s-1:s+2]))
+enso_state = []
+for i in range(len(test)):
+    if test[i] < -0.5:
+        enso_state.append('A')
+    elif test[i] > 0.5:
+        enso_state.append('O')
+    else:
+        enso_state.append('N')
 
+enso_state.count('A')
+enso_state.count('O')
+enso_state.count('N')
 # Construct mask for only neutral and La Nina phases
 #nino_mask = np.zeros(length)
 #for t in range(length):
@@ -175,12 +190,16 @@ lag_func_matrix = tp.plot_lagfuncs(val_matrix=correlations, setup_args={'var_nam
 
 
 
+
+
+
+
 # Causal network 1: All observations
 parcorr = ParCorr(significance='analytic')
 dataframe1 = pp.DataFrame(df.values, datatime = {0:np.arange(len(df))}, var_names= var_names)
 pcmci.verbosity = 1
 pcmci = PCMCI(dataframe=dataframe1, cond_ind_test=parcorr,verbosity=1)
-results1 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha=0.01, alpha_level=0.01, fdr_method = 'fdr_bh')
+results1 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha= None, alpha_level=0.01, fdr_method = None)
 
 # Causal network 2: Spring barrier
 
@@ -191,26 +210,32 @@ exc_spring = [0, 4, 5, 6, 7, 8, 9, 10, 11]
 for i in exc_spring:
     mask[i::cycle_length, :] = False
 
-parcorr = ParCorr(significance='analytic', mask_type='xyz')
+parcorr = ParCorr(significance='analytic', mask_type='x')
 dataframe2 = pp.DataFrame(np.copy(df), datatime = {0:np.arange(len(df))}, var_names= var_names, mask = mask)
 pcmci = PCMCI(dataframe=dataframe2, cond_ind_test=parcorr,verbosity=1)
-results2 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha=0.01, alpha_level=0.01, fdr_method = 'fdr_bh')
+results2 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha= None, alpha_level=0.01, fdr_method = None)
 
 
 # Causal network 3: Spring barrier towards La Niña
 
-nina_mask = np.ones(length, dtype = 'bool')
-for t in range(length):
-    if np.sum(nino34smoothed[max(0, t-2): min(length, t+3)] < -0.5) >= 5:
-        nina_mask[t] = False
+# range(start, stop, step)
+for s in range(11, int(len(df)/12)*12, 12):
+  if np.mean(nino34[s-1:s+2]) >-0.5:
+      mask[s-7:s+2] = True
 
-for t in range(mask.shape[0]):
-   if nina_mask[t] == True:
-        mask[t] = True
+
+#nina_mask = np.ones(length, dtype = 'bool')
+#for t in range(length):
+#    if np.sum(nino34smoothed[max(0, t-2): min(length, t+3)] < -0.5) >= 5:
+#        nina_mask[t] = False
+
+#for t in range(mask.shape[0]):
+#   if nina_mask[t] == True:
+#        mask[t] = True
 
 dataframe = pp.DataFrame(np.copy(df), datatime = {0:np.arange(len(df))}, var_names= var_names, mask = mask)
 pcmci = PCMCI(dataframe=dataframe, cond_ind_test=parcorr,verbosity=1)
-results3 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha=0.01, alpha_level=0.01, fdr_method = 'fdr_bh')
+results3 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha= None, alpha_level=0.05, fdr_method = None)
 
 
 # Causal network 4: Spring barrier towards El Niño
@@ -219,18 +244,26 @@ exc_spring = [0, 4, 5, 6, 7, 8, 9, 10, 11]
 for i in exc_spring:
     mask[i::cycle_length, :] = False
 
-nino_mask = np.ones(length, dtype = 'bool')
-for t in range(length):
-    if np.sum(nino34smoothed[max(0, t-2): min(length, t+3)] > 0.5) >= 5:
-        nino_mask[t] = False
+for s in range(11, int(len(df)/12)*12, 12):
+  if np.mean(nino34[s-1:s+2]) < 0.5:
+      mask[s-7:s+2] = True
 
-for t in range(mask.shape[0]):
-   if nino_mask[t] == True:
-        mask[t] = True
+#nino_mask = np.ones(length, dtype = 'bool')
+#for t in range(length):
+#    if np.sum(nino34smoothed[max(0, t-2): min(length, t+3)] > 0.5) >= 5:
+#        nino_mask[t] = False
+
+#for t in range(mask.shape[0]):
+#   if nino_mask[t] == True:
+#        mask[t] = True
 
 dataframe = pp.DataFrame(np.copy(df), datatime = {0:np.arange(len(df))}, var_names= var_names, mask = mask)
 pcmci = PCMCI(dataframe=dataframe, cond_ind_test=parcorr,verbosity=1)
-results4 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha=0.01, alpha_level=0.01, fdr_method = 'fdr_bh')
+results4 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha=None, alpha_level=0.05, fdr_method = None)
+
+tp.plot_timeseries(dataframe, color='black', show_meanline=True, grey_masked_samples='data')
+plt.show()
+
 
 # Overall graph plot
 
@@ -240,6 +273,7 @@ tp.plot_graph(
     val_matrix=results1['val_matrix'],
     graph=results1['graph'],
     var_names=var_names,
+    link_colorbar_label='cross-MCI',
     fig_ax= (fig, axes[0,0]))
 axes[0, 0].set_title('All observations')
 
@@ -270,80 +304,8 @@ tp.plot_graph(
     fig_ax= (fig, axes[1,1]))
 axes[1, 1].set_title('Spring barrier towards El Niño')
 
+fig.suptitle("Causal networks for reanalysis data", fontsize=16)
 plt.subplots_adjust(hspace=0.4)
 plt.show()
 
 
-############################ Future ###################################
-cpac = pd.read_csv('CMIP6/CESM2/icmip6_tas_mon_CESM2_ssp585.0_-150--130E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=56, header=None)
-epac = pd.read_csv('CMIP6/CESM2/icmip6_tas_mon_CESM2_ssp585.0_-100--80E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=56, header=None)
-wpac = pd.read_csv('CMIP6/CESM2/icmip6_psl_mon_CESM2_ssp585.0_130-150E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=56, header=None)
-
-cpac.columns = ['Year', 'Jan', 'Feb', 'Mar', 'Apr', 'May','Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-epac.columns = cpac.columns
-wpac.columns = cpac.columns
-
-
-# stack observations into a single column
-cpac = cpac.drop(cpac.columns[0], axis=1)
-cpac = cpac.stack().reset_index(drop=True)
-
-epac = epac.drop(epac.columns[0], axis=1)
-epac = epac.stack().reset_index(drop=True)
-
-wpac = wpac.drop(wpac.columns[0], axis=1)
-wpac = wpac.stack().reset_index(drop=True)
-
-
-# specify date and add to dataframe
-date = pd.date_range(start='1850-01-01', end='2100-12-01', freq='MS')
-date = date.strftime('%Y-%m')
-
-df = pd.DataFrame({'Date': date, 'WPAC': wpac, 'CPAC': cpac, 'EPAC': epac})
-df = df[df['Date'] >= '2020-01']
-
-
-var_names = ['WPAC', 'CPAC', 'EPAC']
-dataframe = pp.DataFrame(np.copy(df.iloc[:,1:4]), datatime = {0:np.arange(len(df))}, var_names= var_names)
-tp.plot_timeseries(dataframe, color='black', show_meanline=True)
-plt.show()
-
-# transform data to bimonthly, to average out noisy monthly data
-#data, _ = pp.time_bin_with_mask(np.copy(data),time_bin_length=2, mask=None)
-
-deTrend_deSeasonalize(df['CPAC'], show_plot = True)
-deTrend_deSeasonalize(df['EPAC'], show_plot = True)
-plt.show()
-
-deTrend_deSeasonalize(df['WPAC'], show_plot = True)
-plt.show()
-
-
-cpac = deTrend_deSeasonalize(df['CPAC'], show_plot = False)
-epac = deTrend_deSeasonalize(df['EPAC'], show_plot = False)
-wpac = deTrend_deSeasonalize(df['WPAC'], show_plot = False)
-# double check
-plt.plot(cpac)
-plt.show()
-
-plt.plot(epac)
-plt.show()
-
-plt.plot(wpac)
-plt.show()
-
-
-df = pd.DataFrame({'WPAC': wpac, 'CPAC': cpac, 'EPAC': epac})
-
-# create tigramite dataframe to inspect
-dataframe = pp.DataFrame(df.values, datatime = {0:np.arange(len(df))}, var_names= var_names)
-
-pcmci.verbosity = 1
-pcmci = PCMCI(dataframe=dataframe, cond_ind_test=parcorr,verbosity=1)
-results5 = pcmci.run_pcmci(tau_max=6, tau_min=1, pc_alpha=0.01, alpha_level=0.01, fdr_method = 'fdr_bh')
-
-tp.plot_graph(
-    val_matrix=results5['val_matrix'],
-    graph=results5['graph'],
-    var_names=var_names)
-plt.show()
