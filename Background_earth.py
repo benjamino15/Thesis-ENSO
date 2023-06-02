@@ -2,11 +2,14 @@
 
 import cartopy
 import cartopy.crs as ccrs
-
+from matplotlib import pyplot as plt
+import matplotlib.patches as mpatches
+red_patch = mpatches.Patch(color='coral', alpha = 0.4, label='Variables region')
+blue_patch = mpatches.Patch(color='lightblue',alpha = 0.4, label='Niño 3.4 region')
 
 
 # Create Plate Carrée projection
-proj = ccrs.Orthographic(central_longitude=-155.0,central_latitude=15.0)
+proj = ccrs.PlateCarree(central_longitude=180.0)
 central_proj = ccrs.PlateCarree(central_longitude=0.0)
 
 # Create a figure and axis using the Plate Carrée projection
@@ -18,6 +21,8 @@ ax.add_feature(cartopy.feature.LAND, zorder=-1, facecolor = 'lightgrey')
 ax.add_feature(cartopy.feature.OCEAN, zorder=-1, facecolor = 'white')
 ax.add_feature(cartopy.feature.COASTLINE, zorder=-1, linewidth=.5)
 #Add areas
+x, y = [-170, -120, -120, -170], [-5.5, -5.5, 5.5, 5.5]
+ax.fill(x, y, transform=central_proj, color='lightblue', alpha=0.4, zorder=0)
 x, y = [130, 150, 150, 130], [-5, -5, 5, 5]
 ax.fill(x, y, transform=central_proj, color='coral', alpha=0.4, zorder=0)
 x, y = [-150, -140, -130, -120, -120, -130, -140, -150], [-5, -5, -5, -5, 5, 5, 5, 5]
@@ -27,6 +32,11 @@ ax.fill(x, y, transform=central_proj, color='coral', alpha=0.4, zorder=0)
 ax.set_global()
 ax.gridlines(linewidth=.2, zorder=0)
 
+ax.set_extent([80, -120, -40, 40], crs=ccrs.PlateCarree(central_longitude=-140.0))
+plt.legend(handles=[red_patch, blue_patch])
+ax.set_yticks([-40, -20, 0, 20, 40], crs=ccrs.PlateCarree())
+
+plt.show()
 
 # causal network plot
 

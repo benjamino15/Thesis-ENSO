@@ -36,13 +36,12 @@ def deTrend_deSeasonalize(data, show_plot = True):
         return result
 
 
-
 # to check tigramite version
 print(pkg_resources.get_distribution("tigramite").version)
 
 # Reading the data
 epac = pd.read_csv('walker_data_obs/iera5_t2m_-100--80E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=20, header=None)
-cpac = pd.read_csv('walker_data_obs/iera5_t2m_-150--130E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=20, header=None)
+cpac = pd.read_csv('walker_data_obs/iera5_t2m_-150--10E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=20, header=None)
 wpac = pd.read_csv('walker_data_obs/iera5_slp_130-150E_-5-5N_n.dat', delimiter=r"\s+", skiprows=20, header=None)
 
 cpac.columns = ['Year', 'Jan', 'Feb', 'Mar', 'Apr', 'May','Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -68,6 +67,8 @@ date = date.strftime('%Y-%m')
 df = pd.DataFrame({'Date': date, 'WPAC': wpac, 'CPAC': cpac, 'EPAC': epac})
 df = df[df['Date'] <= '2023-03']
 df = df[df['Date'] >= '1950-01']
+
+
 
 
 var_names = ['WPAC', 'CPAC', 'EPAC']
