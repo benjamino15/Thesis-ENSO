@@ -1,4 +1,3 @@
-
 import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
@@ -40,10 +39,10 @@ def deTrend_deSeasonalize(data, show_plot = True):
 print(pkg_resources.get_distribution("tigramite").version)
 
 # Reading the data
-epac = pd.read_csv('walker_data_obs/iera5_t2m_-100--80E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=20, header=None)
-cpac = pd.read_csv('walker_data_obs/iera5_t2m_-150--120E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=20, header=None)
-wpac = pd.read_csv('walker_data_obs/iera5_slp_130-150E_-5-5N_n.dat', delimiter=r"\s+", skiprows=20, header=None)
-nino34 = pd.read_csv('walker_data_obs/iera5_t2m_-170--120E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=20, header=None)
+epac = pd.read_csv('CMIP6/CESM2/icmip6_tas_mon_CESM2_ssp585.0_-100--80E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=156, header=None)
+cpac = pd.read_csv('CMIP6/CESM2/icmip6_tas_mon_CESM2_ssp585.0_-150--120E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=156, header=None)
+wpac = pd.read_csv('CMIP6/CESM2/icmip6_psl_mon_CESM2_ssp585.0_130-150E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=156, header=None)
+nino34 = pd.read_csv('CMIP6/CESM2/icmip6_tas_mon_CESM2_ssp585.0_-170--120E_-5-5N_n_su.dat', delimiter=r"\s+", skiprows=156, header=None)
 
 
 cpac.columns = ['Year', 'Jan', 'Feb', 'Mar', 'Apr', 'May','Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -67,11 +66,11 @@ nino34 = nino34.stack().reset_index(drop=True)
 
 
 # specify date and add to dataframe
-date = pd.date_range(start='1950-01-01', end='2023-12-01', freq='MS')
+date = pd.date_range(start='1950-01-01', end='2100-12-01', freq='MS')
 date = date.strftime('%Y-%m')
 
 df = pd.DataFrame({'Date': date, 'WPAC': wpac, 'CPAC': cpac, 'EPAC': epac})
-df = df[df['Date'] <= '2023-03']
+df = df[df['Date'] <= '2025-01']
 df = df[df['Date'] >= '1950-01']
 
 
@@ -111,21 +110,24 @@ plt.show()
 
 #we use the El niño 3.4 index to mask the data, so we can choose only the data during the Nov-Feb period with La Niña-Neutral conditions
 #Oceanic Nino Index defined by 5 consecutive months of 3-month-running-mean of Nino3.4 SST above/below 0.5
-start_year = 1950
-length = 12*(2023 - start_year) +3
-nino34 = nino34[:-9]
+
+df_nino34 = pd.DataFrame({'Date': date, 'nino34': nino34})
+df_nino34 = df_nino34[df_nino34['Date'] <= '2025-01']
+df_nino34 = df_nino34[df_nino34['Date'] >= '1950-01']
+nino34 = df_nino34['nino34']
 
 plt.plot(pp.smooth(np.copy(nino34), smooth_width=30 * 12, residuals=False))
 plt.plot(nino34)
 plt.show()
 
 nino34 = pp.smooth(np.copy(nino34), smooth_width=30 * 12, residuals=True)
-
+plt.plot(nino34)
+plt.show()
 
 
 # to see averages
 test = []
-for s in range(11, int(len(df)/12)*12, 12):
+for s in range(11, int(len(nino34)/12)*12, 12):
     test.append(np.mean(nino34[s-1:s+2]))
 enso_state = []
 for i in range(len(test)):
@@ -139,28 +141,10 @@ for i in range(len(test)):
 enso_state.count('A')
 enso_state.count('O')
 enso_state.count('N')
-# Construct mask for only neutral and La Nina phases
-#nino_mask = np.zeros(length)
-#for t in range(length):
-#    if np.sum(nino34smoothed[max(0, t-4): min(length, t+5)] > 0.5) >= 5:
-#        nino_mask[t] = 1
 
-# Time-bin mask since we will use bimonthly time series. If we change this later, remember to change cycle_length = 6
-# nino_mask, _ = pp.time_bin_with_mask(nino_mask,
-#   time_bin_length=2, mask=None)
+enso_state_year = pd.DataFrame({'enso_state': enso_state, 'year': range(1950, 2025)})
 
-# Construct mask to only select November to February
-#cycle_length = 12
-#mask = np.ones(df.shape, dtype='bool')
-#for i in [0, 1, 10, 11]:  #
-#    mask[i::cycle_length, :] = False
-
-# Additionally mask to pick only neutral and La Nina phases
-#for t in range(mask.shape[0]):
-#   if nino_mask[t] >= 0.5:
-#        mask[t] = True
-
-
+# start analysis
 
 df = pd.DataFrame({'WPAC': wpac, 'CPAC': cpac, 'EPAC': epac})
 
@@ -176,7 +160,7 @@ plt.show()
 
 parcorr = ParCorr(significance='analytic')
 pcmci = PCMCI(
-    dataframe=dataframe, 
+    dataframe=dataframe,
     cond_ind_test=parcorr,
     verbosity=1)
 correlations = pcmci.get_lagged_dependencies(tau_max=20, val_only=True)['val_matrix']
@@ -205,7 +189,7 @@ parcorr = ParCorr(significance='analytic')
 dataframe1 = pp.DataFrame(df.values, datatime = {0:np.arange(len(df))}, var_names= var_names)
 pcmci.verbosity = 1
 pcmci = PCMCI(dataframe=dataframe1, cond_ind_test=parcorr,verbosity=1)
-results1 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha= None, alpha_level=0.05, fdr_method = 'fdr_bh')
+results1 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha= 0.05, alpha_level=0.05, fdr_method = 'fdr_bh')
 
 # Causal network 2: Spring barrier
 
@@ -216,10 +200,10 @@ exc_spring = [0, 4, 5, 6, 7, 8, 9, 10, 11]
 for i in exc_spring:
     mask[i::cycle_length, :] = False
 
-parcorr = ParCorr(significance='analytic', mask_type='x')
+parcorr = ParCorr(significance='analytic', mask_type='xy')
 dataframe2 = pp.DataFrame(np.copy(df), datatime = {0:np.arange(len(df))}, var_names= var_names, mask = mask)
 pcmci = PCMCI(dataframe=dataframe2, cond_ind_test=parcorr,verbosity=1)
-results2 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha= None, alpha_level=0.05, fdr_method = 'fdr_bh')
+results2 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha= 0.05, alpha_level=0.05, fdr_method = 'fdr_bh')
 
 
 # Causal network 3: Spring barrier towards La Niña
@@ -241,9 +225,9 @@ for s in range(11, int(len(df)/12)*12, 12):
 #   if nina_mask[t] == True:
 #        mask[t] = True
 
-dataframe = pp.DataFrame(np.copy(df), datatime = {0:np.arange(len(df))}, var_names= var_names, mask = mask)
-pcmci = PCMCI(dataframe=dataframe, cond_ind_test=parcorr,verbosity=1)
-results3 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha= None, alpha_level=0.05, fdr_method = 'fdr_bh')
+dataframe3 = pp.DataFrame(np.copy(df), datatime = {0:np.arange(len(df))}, var_names= var_names, mask = mask)
+pcmci = PCMCI(dataframe=dataframe3, cond_ind_test=parcorr,verbosity=1)
+results3 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha= 0.05, alpha_level=0.05, fdr_method = 'fdr_bh')
 
 
 # Causal network 4: Spring barrier towards El Niño
@@ -265,9 +249,9 @@ for s in range(11, int(len(df)/12)*12, 12):
 #   if nino_mask[t] == True:
 #        mask[t] = True
 
-dataframe = pp.DataFrame(np.copy(df), datatime = {0:np.arange(len(df))}, var_names= var_names, mask = mask)
-pcmci = PCMCI(dataframe=dataframe, cond_ind_test=parcorr,verbosity=1)
-results4 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha=None, alpha_level=0.05, fdr_method = 'fdr_bh')
+dataframe4 = pp.DataFrame(np.copy(df), datatime = {0:np.arange(len(df))}, var_names= var_names, mask = mask)
+pcmci = PCMCI(dataframe=dataframe4, cond_ind_test=parcorr,verbosity=1)
+results4 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha=0.05, alpha_level=0.05, fdr_method = 'fdr_bh')
 
 tp.plot_timeseries(dataframe, color='black', show_meanline=True, grey_masked_samples='data')
 plt.show()
@@ -312,8 +296,6 @@ tp.plot_graph(
     fig_ax= (fig, axes[1,1]))
 axes[1, 1].set_title('Spring barrier towards El Niño')
 
-fig.suptitle("Causal networks for reanalysis data", fontsize=16)
+fig.suptitle("Causal networks for CMIP6 data", fontsize=16)
 plt.subplots_adjust(hspace=0.4)
 plt.show()
-
-
