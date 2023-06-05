@@ -191,6 +191,63 @@ pcmci.verbosity = 1
 pcmci = PCMCI(dataframe=dataframe1, cond_ind_test=parcorr,verbosity=1)
 results1 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha= 0.05, alpha_level=0.05, fdr_method = 'fdr_bh')
 
+
+# array shape n x n x m. n variables (matrices and rows), m lags (columns).
+# matrix i represents the effect variable i has on other variables.
+# for example, matrix i, row j, column k, represents the effect of variable i on variable j, in lag k-1.
+array = np.array([[[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+                  [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+                  [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]])
+
+threshold = 0.05
+
+reference_val_matrix = results1['val_matrix']
+reference_p_matrix = results1['p_matrix']
+val_matrix = results2['val_matrix']
+p_matrix = results2['p_matrix']
+
+def comparison_metrics(reference_val_matrix, reference_p_matrix, val_matrix, p_matrix, threshold):
+    mask_array = np.where(reference_p_matrix < threshold, 1, 0)
+    mask_array = mask_array.flatten().tolist()
+    reference_val_matrix = reference_val_matrix.flatten().tolist()
+    val_matrix = val_matrix.flatten().tolist()
+    abs_difference = []
+    squared_difference = []
+    for i in range(len(mask_array)):
+        if mask_array[i] == 1:
+            abs_difference.append(abs(reference_val_matrix[i] - val_matrix[i]))
+            squared_difference.append((reference_val_matrix[i] - val_matrix[i])**2)
+
+    mask_array2 = np.where(p_matrix < threshold, 1, 0)
+    mask_array2 = mask_array2.flatten().tolist()
+    true_positives = []
+    false_positives = []
+    false_negatives = []
+    for i in range(len(mask_array)):
+        if mask_array[i] == 1 and mask_array2[i] == 1:
+            true_positives.append(1)
+        elif mask_array[i] == 1 and mask_array2[i] == 0:
+            false_negatives.append(1)
+        elif mask_array[i] == 0 and mask_array2[i] == 1:
+            false_positives.append(1)
+
+    precision = np.sum(true_positives)/(np.sum(true_positives) + np.sum(false_positives))
+    recall = np.sum(true_positives)/(np.sum(true_positives) + np.sum(false_negatives))
+    f1_score = (2*precision * recall)/(precision + recall)
+    return np.mean(abs_difference), np.sum(squared_difference)**0.5, false_negatives, false_positives, f1_score
+
+
+
+comparison_metrics(results1['val_matrix'], results1['p_matrix'], results2['val_matrix'],results2['p_matrix'], threshold)
+
+
+
+
+
+mask_array = np.where(results2['p_matrix'] < threshold, 1, 0)
+mask_array
+mask_array.flatten().tolist()
+
 # Causal network 2: Spring barrier
 
 # Construct mask to exclude spring barrier
@@ -200,11 +257,12 @@ exc_spring = [0, 4, 5, 6, 7, 8, 9, 10, 11]
 for i in exc_spring:
     mask[i::cycle_length, :] = False
 
-parcorr = ParCorr(significance='analytic', mask_type='xy')
+parcorr = ParCorr(significance='analytic', mask_type='y')
 dataframe2 = pp.DataFrame(np.copy(df), datatime = {0:np.arange(len(df))}, var_names= var_names, mask = mask)
 pcmci = PCMCI(dataframe=dataframe2, cond_ind_test=parcorr,verbosity=1)
 results2 = pcmci.run_pcmci(tau_max=3, tau_min=1, pc_alpha= 0.05, alpha_level=0.05, fdr_method = 'fdr_bh')
 
+results2['val_matrix']
 
 # Causal network 3: Spring barrier towards La Niña
 
